@@ -2,7 +2,7 @@ from tinydb import TinyDB, Query
 from pyPreservica import *
 from bs4 import BeautifulSoup
 import xml.etree.ElementTree
-import html
+
 
 workflow = WorkflowAPI(use_shared_secret=True)
 client = EntityAPI(use_shared_secret=True)
@@ -16,7 +16,7 @@ workflow_context = workflow_contexts.pop()
 
 db = TinyDB("progress-db.json")
 
-for n in range(17, 18, 1):
+for n in range(21, 22, 1):
     URL = f"https://www.schroders.com/en/insights/index/{n}/"
     request = requests.get(URL)
     if request.status_code == requests.codes.ok:
@@ -26,12 +26,11 @@ for n in range(17, 18, 1):
 
             ## extract the blog URL
             seed_url = insight.parent["href"]
-            print("Seed: " + seed_url)
+            print("Seed URL: " + seed_url)
 
             # check for already completed URLS
             query = Query()
-            result = db.search(query.url == seed_url)
-            if len(result) > 0:
+            if db.contains(query.url == seed_url):
                 print(f"Already processed. Skipping...")
                 continue
 
@@ -127,12 +126,13 @@ for n in range(17, 18, 1):
 
                 print("\n")
                 search_url = seed_url.lstrip("https://")
-                map_fields = {"xip.reference": "%", "xip.description": search_url, "xip.title": title,
+                map_fields = {"xip.reference": "*", "xip.description": search_url,
                               "xip.document_type": "IO", "xip.parent_ref": folder.reference}
                 for result in content.search_index_filter_list("%", 1, map_fields):
                     if result["xip.description"] == seed_url:
+                        print("Found Asset. Updating Metadata....")
                         asset = client.asset(result["xip.reference"])
-                        db.upsert({'Ingested': True, "asset ref": asset.reference}, query.url == seed_url)
+                        db.upsert({'ingested': True, "asset ref": asset.reference}, query.url == seed_url)
                         asset.title = title
                         client.save(asset)
 
@@ -144,8 +144,8 @@ for n in range(17, 18, 1):
                             xml.etree.ElementTree.SubElement(author_object, "Name").text = a[0]
                             xml.etree.ElementTree.SubElement(author_object, "Title").text = a[1]
                         xml.etree.ElementTree.SubElement(xml_object, "Description").text = article_description
-                        xml.etree.ElementTree.SubElement(xml_object, "CreationDate").text = creationdate
-                        xml.etree.ElementTree.SubElement(xml_object, "PublicationDate").text = publicationdate
+                        xml.etree.ElementTree.SubElement(xml_object, "CreationDate").text = creationdate.replace(" ", "T")
+                        xml.etree.ElementTree.SubElement(xml_object, "PublicationDate").text = publicationdate.replace(" ", "T")
                         xml.etree.ElementTree.SubElement(xml_object, "URL").text = seed_url
                         xml.etree.ElementTree.SubElement(xml_object, "Section").text = section
                         xml_request = xml.etree.ElementTree.tostring(xml_object, encoding='utf-8', xml_declaration=True)
