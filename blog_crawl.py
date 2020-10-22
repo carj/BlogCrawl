@@ -3,7 +3,6 @@ from pyPreservica import *
 from bs4 import BeautifulSoup
 import xml.etree.ElementTree
 
-
 workflow = WorkflowAPI(use_shared_secret=True)
 client = EntityAPI(use_shared_secret=True)
 content = ContentAPI(use_shared_secret=True)
@@ -16,7 +15,7 @@ workflow_context = workflow_contexts.pop()
 
 db = TinyDB("progress-db.json")
 
-for n in range(21, 22, 1):
+for n in range(38, 39, 1):
     URL = f"https://www.schroders.com/en/insights/index/{n}/"
     request = requests.get(URL)
     if request.status_code == requests.codes.ok:
@@ -24,7 +23,7 @@ for n in range(21, 22, 1):
         soup = BeautifulSoup(request.content, 'html.parser')
         for insight in soup.find_all("div", class_="tile single insight"):
 
-            ## extract the blog URL
+            # extract the blog URL
             seed_url = insight.parent["href"]
             print("Seed URL: " + seed_url)
 
@@ -35,7 +34,7 @@ for n in range(21, 22, 1):
                 continue
 
             title = insight.find(class_="image").attrs["alt"]
-            ## extract the blog Title
+            # extract the blog Title
             print("Title: " + title)
 
             category = ""
@@ -44,7 +43,7 @@ for n in range(21, 22, 1):
                 category = category_container.string
                 print(category)
 
-            ## extract the blog date
+            # extract the blog date
             date = insight.find(class_="date")
             year = date.string.split(" ")[2]
             month = date.string.split(" ")[1]
@@ -80,13 +79,13 @@ for n in range(21, 22, 1):
 
             tag = f"{year} {month}"
 
-            ## does the year/month folder exist
+            # does the year/month folder exist
             entities = client.identifier("insight-blog", tag)
             if len(entities) == 1:
                 folder = entities.pop()
                 folder = client.folder(folder.reference)
 
-            ## check the parent year folder
+            # check the parent year folder
             if folder is None:
                 entities = client.identifier("insight-blog", year)
                 if len(entities) == 0:
@@ -144,8 +143,10 @@ for n in range(21, 22, 1):
                             xml.etree.ElementTree.SubElement(author_object, "Name").text = a[0]
                             xml.etree.ElementTree.SubElement(author_object, "Title").text = a[1]
                         xml.etree.ElementTree.SubElement(xml_object, "Description").text = article_description
-                        xml.etree.ElementTree.SubElement(xml_object, "CreationDate").text = creationdate.replace(" ", "T")
-                        xml.etree.ElementTree.SubElement(xml_object, "PublicationDate").text = publicationdate.replace(" ", "T")
+                        xml.etree.ElementTree.SubElement(xml_object, "CreationDate").text = creationdate.replace(" ",
+                                                                                                                 "T")
+                        xml.etree.ElementTree.SubElement(xml_object, "PublicationDate").text = publicationdate.replace(
+                            " ", "T")
                         xml.etree.ElementTree.SubElement(xml_object, "URL").text = seed_url
                         xml.etree.ElementTree.SubElement(xml_object, "Section").text = section
                         xml_request = xml.etree.ElementTree.tostring(xml_object, encoding='utf-8', xml_declaration=True)
